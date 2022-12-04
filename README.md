@@ -1,17 +1,24 @@
 # Детальное объяснение настройки навигационного стека ROS1 move_base
 
 Изображение MoveBase
+![alt text](/img/overview_tf.jpg)
 
 ## Пошаговая инструкция
 
 <details>
 <summary>
-<b>1.Настройка карты преград (<a href="Sprint_1/D.cpp">juggle.cpp</a></b>)
+<b>1.Настройка карты преград 
 </summary>
 
-- `footprint:` - границы робота, задаются координатами относительно base_link в метрах
-- `publish_frequency:` - частота публикации в Гц
-- `transform_tolerance:` - Задает допустимую задержку преобразования данных (tf) в секундах. Этот параметр служит защитой от потери ссылки в дереве tf, в то же время позволяя существовать в системе с задержкой, которая устраивает пользователя. Если преобразование tf между кадрами координат, указанными параметрами global_frame и robot_base_frame, на несколько секунд старше transform_tolerance, чем ros::Time::now(), то стек навигации остановит робота.
+- `footprint:` - Границы робота, задаются координатами относительно `base_link` в метрах
+- `publish_frequency:` - Частота публикации в Гц
+- `update_frequency` - Параметр определяет частоту в Гц, с которой карта затрат будет запускать цикл обновления
+- `transform_tolerance:` - Задает допустимую задержку преобразования данных (tf) в секундах. Этот параметр служит защитой от потери ссылки в дереве tf, в то же время позволяя существовать в системе с задержкой, которая устраивает пользователя. Если преобразование tf между кадрами координат, указанными параметрами `global_frame` и `robot_base_frame`, на несколько секунд старше `transform_tolerance`, чем `ros::Time::now()`, то стек навигации остановит робота
+- `rolling_window` - Значение параметра `true` означает, что карта затрат будет оставаться центрированной вокруг робота по мере его перемещения по миру
+- `static_map` - Параметр определяет, должна ли карта затрат инициализироваться на основе карты, обслуживаемой map_server. Если вы не используете существующую карту или `map_server`, установите параметру `static_map` значение `false`
+- `width,` `height,` `resolution` - Параметры задают ширину (метры), высоту (метры) и разрешение (метры/ячейка) карты затрат. Обратите внимание, что разрешение этой сетки может отличаться от разрешения вашей статической карты, но в большинстве случаев мы склонны устанавливать их одинаково
+- `global_frame` - Параметр определяет, в каком фрейме координат должна выполняться карта затрат
+- `robot_base_frame` - Параметр определяет систему координат, на которую должна ссылаться карта затрат для базы робота
 - `map_type:` - costmap
 
 ```
@@ -23,7 +30,7 @@ map_type: costmap
 
 <details>
 <summary> 
-<b>inflation_layer (<a href="Sprint_1/D.cpp">juggle.cpp</a></b>)
+<b>inflation_layer 
 </summary>
 
 `Инфляция` - это процесс распространения значений затрат из занятых ячеек, которые уменьшаются с расстоянием. Для этой цели мы определяем 5 конкретных символов для значений карты затрат, поскольку они относятся к роботу.
@@ -57,7 +64,7 @@ local_inflation_layer:
 
 <details>
     <summary>
-    <b>static_layer (<a href="Sprint_1/D.cpp">juggle.cpp</a></b>)
+    <b>static_layer 
     </summary>
     Статическая карта включает в себя в основном неизменяемые данные из внешнего источника
 
@@ -86,7 +93,7 @@ static_layer:
 
 <details>
 <summary>
-<b>obstacle_layer (<a href="Sprint_1/D.cpp">juggle.cpp</a></b>)
+<b>obstacle_layer 
 </summary>
 
 Слои препятствий и вокселей содержат информацию от датчиков в виде облаков точек или лазерных сканирований. Слой препятствий отслеживается в двух измерениях, в то время как слой вокселей отслеживается в трех.
@@ -104,41 +111,49 @@ static_layer:
 
 ### Sensor management parameters
 
-- `observation_sources (string, default: "")`-
-- `topic (string, default: source_name)`-
-- `sensor_frame (string, default: "")`-
-- `sensor_frame (string, default: "")`-
-- `expected_update_rate (double, default: 0.0)`-
-- `data_type (string, default: "PointCloud")`-
-- `clearing (bool, default: false)`-
-- `clearing (bool, default: false)`-
-- `max_obstacle_height (double, default: 2.0)`-
-- `min_obstacle_height (double, default: 0.0)`-
-- `obstacle_range (double, default: 2.5)`-
-- `raytrace_range (double, default: 3.0)`-
-- `inf_is_valid (bool, default: false)`-
+- `observation_sources (string, default: "")`- Список имен источников наблюдения, разделенных пробелами. Это определяет каждое из пространств имен `source_name`, определенных ниже.
+- `topic (string, default: source_name)`-Топик, по которой поступают данные датчиков для этого источника. По умолчанию используется имя источника.
+- `sensor_frame (string, default: "")`- Фрейм источника датчика. Оставьте пустым, чтобы попытаться прочитать кадр из данных датчика. Фрейм может быть считан как из сообщений `sensor_msgs/LaserScan`, `sensor_msgs/Point Cloud`, так и из сообщений `sensor_msgs/PointCloud2`.
+- `observation_persistence (double, default: 0.0)` - Как долго сохранять показания каждого датчика в секундах. Значение 0.0 сохранит только самое последнее значение.
+- `expected_update_rate (double, default: 0.0)`- Как часто следует ожидать показаний датчика в секундах. Значение 0.0 обеспечит бесконечное время между показаниями. Этот параметр используется в качестве средства защиты от сбоев, чтобы навигационный стек не мог командовать роботом при сбое датчика. Он должен быть установлен на значение, которое немного более допустимо, чем фактическая скорость датчика. Например, если мы ожидаем сканирования лазером каждые 0,05 секунды, мы могли бы установить этот параметр равным 0,1 секунды, чтобы обеспечить щедрый буфер и учесть некоторую задержку в системе.
+- `data_type (string, default: "PointCloud")`- Тип данных, связанный с темой, прямо сейчас поддерживаются только `PointCloud2`, `PointCloud2` и `LaserScan`.
+- `clearing (bool, default: false)`-Следует ли использовать это наблюдение для расчистки свободного пространства
+- `marking (bool, default: true)` - Следует ли использовать это наблюдение для обозначения препятствий
+- `max_obstacle_height (double, default: 2.0)`- Максимальная высота в метрах показаний датчика, считающихся действительными. Обычно это значение устанавливается немного выше высоты робота. Установка этому параметру значения, большего, чем глобальный параметр `max_obstacle_height`, не имеет никакого эффекта. Установка этому параметру значения, меньшего, чем глобальная `max_obstacle_height`, приведет к отфильтровыванию точек с этого датчика выше этой высоты.
+- `min_obstacle_height (double, default: 0.0)`- Минимальная высота в метрах для показаний датчика, считающихся действительными. Обычно это значение устанавливается на уровне земли, но может быть установлено выше или ниже в зависимости от модели шума вашего датчика.
+- `obstacle_range (double, default: 2.5)`- Максимальное расстояние в метрах, на котором можно вставить препятствия в карту затрат с использованием данных датчика.
+- `raytrace_range (double, default: 3.0)`- Максимальная дальность в метрах, на которой можно отслеживать препятствия по карте с помощью данных датчиков.
+- `inf_is_valid (bool, default: false)`- Позволяет вводить значения Inf в сообщениях наблюдения `LaserScan`. Значения Inf преобразуются в максимальную дальность действия лазера.
+- `clear_after_reading (bool, default: false)` - Очистит буфер после того, как слой получит из него показания
+- `filter (string, default:"passthrough")` - Примените `voxel`, `passthrough` или без фильтра к данным датчика, рекомендуется включить хотя бы один фильтр.
+- `voxel_min_points (int default:0)` - Минимальное количество баллов на воксель для воксельного фильтра
+- `model_type (int, default:0)` - 0 depth camera, 1 for 3D Lidar
+- `vertical_fov_angle (double, default:0.7)` - Вертикальон поле зрения в радианах
+- `horizontal_fov_angle (double, default:1.04)` - Горизонтальное поле зрения а радианах
+- `vertical_fov_padding (double, default:)` - ?
+- `decay_acceleration (int, default:0)` - Затухание ускорения
 
 ### Global Filtering Parameters
 
-- `max_obstacle_height (double, default: 2.0)`-
-- `obstacle_range (double, default: 2.5)`-
-- `raytrace_range (double, default: 3.0)`-
+- `max_obstacle_height (double, default: 2.0)`- Максимальная высота любого препятствия, которое будет введено в карту затрат, в метрах. Этот параметр должен быть установлен так, чтобы он был немного выше высоты вашего робота.
+- `obstacle_range (double, default: 2.5)`- Максимальное расстояние по умолчанию от робота, на котором препятствие будет вставлено в карту затрат в метрах. Это может быть переопределено для каждого датчика.
+- `raytrace_range (double, default: 3.0)`- Диапазон по умолчанию в метрах, на котором можно отслеживать препятствия на карте с помощью данных датчика. Это может быть переопределено для каждого датчика
 
 ### ObstacleCostmapPlugin
 
-- `track_unknown_space (bool, default: false)`-
-- `footprint_clearing_enabled (bool, default: true)`-
-- `combination_method (enum, default: 1)`-
+- `track_unknown_space (bool, default: false)`- Если значение `false`, каждый пиксель имеет одно из 2 состояний: `lethal obstacle or free`. Если значение `true`, то каждый пиксель имеет одно из 3 состояний: `ethal obstacle, free, unknown`.
+- `footprint_clearing_enabled (bool, default: true)`- Если значение `true`, след робота очистит (пометит как свободный) пространство, в котором он перемещается.
+- `combination_method (enum, default: 1)`- Изменяет поведение того, как `obstacle_layer` обрабатывает входящие данные из слоев за его пределами. Возможными значениями являются `Overwrite` (0), `Maximum` (1) и `Nothing` (99). `Overwrite` просто перезаписывает приведенные ниже данные, т.е. они не используются. `Maximum` - это то, чего вы хотите в большинстве случаев. Он использует максимум того, что указано в `obstacle_layer` или входящих данных. `Nothing` вообще не изменяет входящие данные. Обратите внимание, что это сильно влияет на то, как ведет себя `costmap`, в зависимости от вашей настройки `track_unkown_space`.
 
 ### VoxelCostmapPlugin
 
-- `origin_z (double, default: 0.0)`-
-- `z_resolution (double, default: 0.2)`-
-- `z_voxels (int, default: 10)`-
-- `unknown_threshold (int, default: - z_voxels)`-
-- `mark_threshold (int, default: 0)`-
-- `publish_voxel_map (bool, default: false)`-
-- `footprint_clearing_enabled (bool, default: true)`-
+- `origin_z (double, default: 0.0)`- Начало координат z карты в метрах
+- `z_resolution (double, default: 0.2)`- Разрешение карты z в метрах/ячейке.
+- `z_voxels (int, default: 10)`- Количество вокселов в каждом вертикальном столбце, высота сетки равна `z_resolution * z_voxels`.
+- `unknown_threshold (int, default: - z_voxels)`- Количество неизвестных ячеек, разрешенных в столбце, которые считаются как `known`
+- `mark_threshold (int, default: 0)`- максимальное количество помеченных ячеек, разрешенных в столбце, которые считаются как `free`.
+- `publish_voxel_map (bool, default: false)`- Следует ли публиковать базовую сетку вокселей для целей визуализации.
+- `footprint_clearing_enabled (bool, default: true)`- Если значение `true`, след робота очистит (пометит как `free`) пространство, в котором он перемещается.
 
 ```
 laser_obstacle_layer:
@@ -151,16 +166,16 @@ laser_obstacle_layer:
         sensor_frame: velodyne
         data_type: PointCloud2
         topic: /velodyne_points
+        observation_persistence: 0.0
+        expected_update_rate: 10.0
         marking: true
         clearing: false
+        min_obstacle_height: 0.4
+        max_obstacle_height: 1.0
         obstacle_range: 10.
         raytrace_range: 12.
         inf_is_valid: true
-        min_obstacle_height: 0.4
-        max_obstacle_height: 1.0
-        expected_update_rate: 10.0
-        observation_persistence: 0.0
-        inf_is_valid: true
+
         voxel_filter: true
         clear_after_reading: true
 
@@ -172,6 +187,7 @@ laser_obstacle_layer:
         clearing: true
         max_z: 2.0
         min_z: 0.1
+
         vertical_fov_angle: 0.523
         vertical_fov_padding: 0.05
         horizontal_fov_angle: 6.29
@@ -203,7 +219,7 @@ depth_obstacle_layer:
         clear_after_reading: true
 
     point_clear:
-        enabled: false
+        enabled: true
         data_type: PointCloud2
         topic: /filtered_ground_plane
         marking: false
@@ -214,35 +230,188 @@ depth_obstacle_layer:
         #vertical_fov_padding: 0.05
         #horizontal_fov_angle: 6.29
         #decay_acceleration: 5.0
-        model_type: 0
+        model_type:
 ```
 
 </details>
 
-</details>
-
 <details>
 <summary>
-<b>2 Настройка карты глобальных преград (<a href="Sprint_1/D.cpp">juggle.cpp</a></b>)
+<b>Social Costmap Layer 
 </summary>
 TExt
 </details>
 
 <details>
 <summary>
-<b>3 Настройка глобального планировщика (<a href="Sprint_1/D.cpp">juggle.cpp</a></b>)
+<b>Range Sensor Layer 
 </summary>
 TExt
+</details>
+
+</details>
+
+<details>
+<summary>
+<b>2.Настройка карты глобальных преград 
+</summary>
+
+```
+global_costmap:
+  global_frame: map
+  robot_base_frame: base_link
+  transform_tolerance: 2
+  update_frequency: 5
+  publish_frequency: 10
+  static_map: true
+  rolling_window: false
+
+  width: 100.0
+  height: 100.0
+  resolution: 0.05
+
+  plugins:
+    - {name: static_layer, type: "costmap_2d::StaticLayer"}
+    #- {name: laser_obstacle_layer, type: "costmap_2d::ObstacleLayer"}
+    - {name: inflation_layer, type: "costmap_2d::InflationLayer"}
+
+```
+
+</details>
+
+<details>
+<summary>
+<b>3.Настройка глобального планировщика 
+</summary>
+
+- `old_navfn_behavior(bool, default: false)` - Если по какой-то причине вы хотите, чтобы `global_planner` точно отражал поведение `navfn`, установите для этого значение `true` (и используйте значения по умолчанию для других логических параметров)
+- `use_quadratic (bool, default: true)`- Если `true`, используйте квадратичную аппроксимацию потенциала. В противном случае используйте более простой расчет.
+- `use_dijkstra (bool, default: true)`- Если `true`, используйте алгоритм Дейкстры. В противном случае A\*.
+- `use_grid_path (bool, default: false)`- Если значение `true`, создайте путь, который следует границам сетки. В противном случае используйте метод градиентного спуска.
+- `allow_unknown (bool, default: true)`- Указывает, следует ли разрешить планировщику создавать планы, пересекающие неизвестное пространство. ПРИМЕЧАНИЕ: если вы используете многоуровневую карту затрат `costmap_2d` со слоем вокселей или препятствий, вы также должны установить параметр `track_unknown_space` для этого слоя равным `true`, иначе он преобразует все ваше неизвестное пространство в свободное пространство (которое планировщик затем с радостью выполнит).
+- `default_tolerance (double, default: 0.0)`- Допуск на целевую точку для планировщика. Планировщик попытается создать план, который максимально приближен к указанной цели, но не дальше, чем `default_tolerance`.
+- `visualize_potential(bool, default: false)`- Указывает, следует ли визуализировать потенциальную область, вычисленную с помощью `PointCloud2`.
+- `planner_window_x(double, default: 0.)` - ?
+- `planner_window_y(double, default: 0.)` - ?
+- `lethal_cost(int, default: 253)`- Вес преграды
+- `neutral_cost(int, default: 50)`- Вес нейтральной области
+- `cost_factor(double, default: 3.)`- Коэффициент для умножения каждой стоимости из карты затрат
+- `publish_potential(bool, default: True)`- Опубликовать карту потенциальных затрат
+- `orientation_mode(int, default: 0)`- Как установить ориентацию каждой точки (None=0, Forward=1, Interpolate=2, Forward Then Interpolate=3, Backward=4, Leftward=5, Rightward=6)
+- `orientation_window_size(int, default: 1)`- Какое окно использовать для определения ориентации на основе производной положения, заданной режимом ориентации
+- `outline_map (bool, default: true)`- Описывает глобальную карту затрат с `lethal obstacles`. Для использования нестатической (`rolling window`) глобальной карты затрат для этого параметра необходимо установить значение `false`
+- `publish_scale(int, default: 100)` - Шкала, на которую умножается опубликованный потенциал
+- `planner_costmap_publish_frequency(double, default: 0.)` - ?
+
+```
+GlobalPlanner:
+  old_navfn_behavior: false
+  use_quadratic: true
+  use_dijkstra: true
+  use_grid_path: false
+
+  allow_unknown: true
+
+  planner_window_x: 0.0
+  planner_window_y: 0.0
+  default_tolerance: 0.0
+
+  publish_scale: 100
+  planner_costmap_publish_frequency: 0.0
+
+  lethal_cost: 253
+  neutral_cost: 30
+  cost_factor: 0.35
+
+  publish_potential: true
+  orientation_mode: 1
+  visualize_potential: true
+```
+
 </details>
 <details>
 <summary>
-<b>4 Настройка карты локальных преград (<a href="Sprint_1/D.cpp">juggle.cpp</a></b>)
+<b>4.Настройка карты локальных преград 
 </summary>
-TExt
+
+```
+local_costmap:
+  global_frame: odom
+  robot_base_frame: base_link
+  transform_tolerance: 1.0
+  update_frequency: 20
+  publish_frequency: 20
+  static_map: false
+  rolling_window: true
+  width: 10
+  height: 10
+  resolution: 0.05
+
+
+  plugins:
+    - {name: static_layer, type: "costmap_2d::StaticLayer"}
+    - {name: laser_obstacle_layer, type: "costmap_2d::ObstacleLayer"}
+    - {name: depth_obstacle_layer, type: "costmap_2d::ObstacleLayer"}
+    #- {name: depth_hole_layer, type: "costmap_2d::ObstacleLayer"}
+    - {name: inflation_layer, type: "costmap_2d::InflationLayer"}
+
+```
+
 </details>
 <details>
 <summary>
-<b>5 LocalPLanner (<a href="Sprint_1/D.cpp">juggle.cpp</a></b>)
+<b>5.LocalPLanner 
 </summary>
-TExt
+
+### DWA
+
+Пакет `base_local_planner` предоставляет контроллер, который управляет мобильной базой в движении. Этот контроллер служит для подключения планировщика траекторий к роботу. Используя карту, планировщик создает кинематическую траекторию для робота, чтобы добраться от старта до места назначения. Попутно планировщик создает, по крайней мере локально вокруг робота, функцию значения, представленную в виде `grid map`. Эта функция значений кодирует затраты на прохождение по ячейкам сетки. Задача контроллера состоит в том, чтобы использовать эту функцию значений для определения скоростей dx, dy, dtheta для отправки роботу.
+
+Основная идея алгоритмов развертывания траектории и динамического оконного подхода (DWA) заключается в следующем:
+
+Дискретная выборка в пространстве управления роботом (dx,dy,dtheta)
+Для каждой выбранной скорости выполните прямое моделирование из текущего состояния робота, чтобы предсказать, что произойдет, если выбранная скорость будет применена в течение некоторого (короткого) периода времени.
+Оцените каждую траекторию, полученную в результате прямого моделирования, используя метрику, которая включает такие характеристики, как: близость к препятствиям, близость к цели, близость к глобальной траектории и скорость. Отбросьте незаконные траектории (те, которые сталкиваются с препятствиями).
+Выберите траекторию с наибольшим количеством очков и отправьте соответствующую скорость на мобильную базу.
+Промойте и повторите процедуру.
+DWA отличается от развертывания траектории тем, как выбирается пространство управления роботом. Выборка развертки траектории из набора достижимых скоростей в течение всего периода прямого моделирования с учетом пределов ускорения робота, в то время как DWA выборка из набора достижимых скоростей только для одного шага моделирования с учетом пределов ускорения робота. Это означает, что DWA является более эффективным алгоритмом, поскольку он выбирает меньшее пространство, но может оказаться более эффективным при развертывании траектории для роботов с низкими пределами ускорения, поскольку DWA не имитирует постоянные ускорения. Однако на практике мы находим, что DWA и развертывание траектории показывают сопоставимые результаты во всех наших тестах, и рекомендуем использовать DWA для повышения эффективности.
+
+### TEBLocalPlanner
+
+Этот пакет реализует онлайн-планировщик оптимальной локальной траектории для навигации и управления мобильными роботами в качестве плагина для навигационного пакета ROS. Начальная траектория, сгенерированная глобальным планировщиком, оптимизируется во время выполнения с минимизацией времени выполнения траектории (цель, оптимальная по времени), удалением от препятствий и соблюдением кинетических ограничений, таких как достижение максимальных скоростей и ускорений.
+
+Текущая реализация соответствует кинематике неголономных роботов (дифференциальный привод и роботы, похожие на автомобили). Поддержка голономных роботов включена начиная с Kinetic.
+
+Оптимальная траектория эффективно получается путем решения разреженной скаляризованной задачи многоцелевой оптимизации. Пользователь может указать веса для задачи оптимизации, чтобы указать поведение в случае конфликтующих целей.
+
+Поскольку местные планировщики, такие как `Timed-Elastic-Band (TEB)`, часто застревают на локально оптимальной траектории, поскольку они не могут пересекать препятствия, реализовано расширение. Подмножество допустимых траекторий отличительных топологий оптимизируется параллельно. Локальный планировщик может переключиться на текущую глобально оптимальную траекторию среди набора кандидатов. Отличительные топологии получаются путем использования концепции классов гомологии / гомотопии.
+
+Подробднее о настройках `TEB` можно почитать здесь()
+
 </details>
+
+### Примечания
+
+1. Максимальная длинна рассчитываемого пути локального планировщика не должна выходить дальше local_costmap
+2. Чтобы `local_costmap` имела неизменную ориентацию, `global_frame = map`
+3. Чтобы `local_costmap` всегда публиковала данные о статических и динамических преградах в один топик,.....
+4. Если в `global_costmap` нет данных с сенсоров `Lidar`, `DepthCamera`, то можно понизить частоту обновления и публикации данных
+5. Частота публикации `local_planner` должна быть оптимальной
+6. Частота обновления и публикации `local_costmap` рассчитывается исходя из max_vel_x\*2
+
+### recovery_behavior
+
+`recovery_behavior(list, default: [{name: conservative_reset, type: clear_costmap_recovery/ClearCostmapRecovery}, {name: rotate_recovery, type: rotate_recovery/RotateRecovery}, {name: aggressive_reset, type: clear_costmap_recovery/ClearCostmapRecovery}]`
+
+Список плагинов поведения восстановления для использования с `move_base` см. в документации `pluginlib` для получения более подробной информации о плагинах. Эти действия будут выполняться, когда `move_base` не сможет найти действительный план в том порядке, в котором они указаны. После завершения каждого действия `move_base` попытается составить план. Если планирование пройдет успешно, `move_base` продолжит нормальную работу. В противном случае будет выполнено следующее поведение восстановления в списке. Эти плагины должны соответствовать интерфейсу поведения `nav_core::Recovery`, указанному в пакете `navy_core`. по умолчанию: `[{name: conservative_reset, type: clear_costmap_recovery/ClearCostmapRecovery}, {name: rotate_recovery, type: rotate_recovery/RotateRecovery}, {name: aggressive_reset, type: clear_costmap_recovery/ClearCostmapRecovery}]`. Примечание: Для параметров по умолчанию поведение `aggressive_reset` будет удалено на расстояние `4 * ~/local_costmap/circumscribed_radius`.
+
+```
+recovery_behavior_enabled: true
+recovery_behaviors:
+  - name: 'aggressive_reset'
+    type: 'clear_costmap_recovery/ClearCostmapRecovery'
+
+aggressive_reset:
+  reset_distance: 0.0
+  layer_names: ["obstacle_3d_layer"]
+```
