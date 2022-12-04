@@ -1,7 +1,7 @@
 # Детальное объяснение настройки навигационного стека ROS1 move_base
 
 Изображение MoveBase
-![alt text](/img/overview_tf.png)
+![alt text](/img/overview_tf.jpg)
 
 ## Пошаговая инструкция
 
